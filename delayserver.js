@@ -1,49 +1,77 @@
 // node.js
-// moment.js
+// moment.js http://momentjs.com/docs
+/*  Обрабатываются запросы
+    get-server - выдается ip Tserver с наименьшим временем nexttimecall
+    и количеством успешных звонков не больше random значения от Cmin до Cmax
+    set-server - обрабатывает запрос от Freeswitch о завершении звонка
+    get-all - показывает существующуй массив Tserver
+    clear-all - сбрасывает массив
+*/
 
 var http = require("http");
 var url = require("url");
+var moment = require('moment');
 
-var tserver = [];
+var tserverArray = [];
 
-tserver['192.168.88.230'] = {ip:'192.168.88.230', nexttimecall: 0, count:0, status:0}
-tserver['192.168.88.231'] = {ip:'192.168.88.231', nexttimecall: 0, count:0, status:0}
-tserver['192.168.88.232'] = {ip:'192.168.88.232', nexttimecall: 0, count:0, status:0}
-tserver['192.168.88.233'] = {ip:'192.168.88.233', nexttimecall: 0, count:0, status:0}
-tserver['192.168.88.234'] = {ip:'192.168.88.234', nexttimecall: 0, count:0, status:0}
-tserver['192.168.88.235'] = {ip:'192.168.88.235', nexttimecall: 0, count:0, status:0}
-tserver['192.168.88.236'] = {ip:'192.168.88.236', nexttimecall: 0, count:0, status:0}
-tserver['192.168.88.254'] = {ip:'192.168.88.254', nexttimecall: 0, count:0, status:0}
+// ip - адрес Tserver
+// nexttimecall - время следующего звонка
+// count - количество удачных совершенных звонков
+// status - статус линии (занята 1, не занята 0 )
 
+
+tserverArray = [{ip:'192.168.88.230', nexttimecall: 1000, count:0, status:0},
+                {ip:'192.168.88.231', nexttimecall: 303, count:0, status:0},]
+            /*  {ip:'192.168.88.232', nexttimecall: 405, count:0, status:0},
+                {ip:'192.168.88.233', nexttimecall: 709, count:0, status:0},
+                {ip:'192.168.88.234', nexttimecall: 589, count:0, status:0},
+                {ip:'192.168.88.235', nexttimecall: 444, count:0, status:0},
+                {ip:'192.168.88.236', nexttimecall: 533, count:0, status:0},
+                {ip:'192.168.88.254', nexttimecall: 1, count:0, status:0}] */
+
+//Минимальное и максимальное значение для random при удачном звонке
+var Amin = 60;
+var Amax = 120;
+//Минимальное и максимальное значение для random при неудачном звонке
+var Bmin = 30;
+var Bmax = 50;
+//Минимальное и максимальное значение для random количества удачных звонков
+var Cmin = 15;
+var Cmax = 20;
+
+
+var tserver = {};
+
+tserverArray.forEach(function(value){
+ tserver[value.ip] = value;
+});
 
 function start() {
   function onRequest(request, response) {
     var pathname = url.parse(request.url).pathname;
     switch (pathname) {
-        case '/get-tserver':
+        case '/get-server':
             getTserver(request,response);
             break;
         case '/set-call':
             setCall(request,response);
             break;
-        case '/clear-tserver':
+        case '/clear-all':
             clearTserver(request,response);
             break;
         case '/get-all':
             getAll(request,response);
             break;
         default:
+            response.writeHead(200, {"Content-Type": "text/plain"});
+            response.write("None!");
+            response.end();
             break;
-        /*
-	    response.writeHead(200, {"Content-Type": "text/plain"});
-	    response.write("None");
-	    response.end();
-        */
     }
   }
 
   http.createServer(onRequest).listen(8888);
-  console.log("Server has started.");
+  console.log(moment().format('YYYY-MM-DD HH:mm:ss') + ": Server has started.");
 }
 
 start()
@@ -51,80 +79,75 @@ start()
 
 function clearTserver(request, response) {
 
-    tserver['192.168.88.230'] = {ip:'192.168.88.230', nexttimecall: 0, count:0, status:0}
-    tserver['192.168.88.231'] = {ip:'192.168.88.231', nexttimecall: 0, count:0, status:0}   
-    tserver['192.168.88.232'] = {ip:'192.168.88.232', nexttimecall: 0, count:0, status:0}
-    tserver['192.168.88.233'] = {ip:'192.168.88.233', nexttimecall: 0, count:0, status:0}
-    tserver['192.168.88.234'] = {ip:'192.168.88.234', nexttimecall: 0, count:0, status:0}
-    tserver['192.168.88.235'] = {ip:'192.168.88.235', nexttimecall: 0, count:0, status:0}
-    tserver['192.168.88.236'] = {ip:'192.168.88.236', nexttimecall: 0, count:0, status:0}
-    tserver['192.168.88.254'] = {ip:'192.168.88.254', nexttimecall: 0, count:0, status:0}
+    for(t in tserver) {
+        tserver[t].nexttimecall = 0;
+        tserver[t].count = 0;
+        tserver[t].status = 0;
+    }
 
-    console.log("Database clear!");
-    response.writeHead(200, {"Content-Type": "text/plain"});
+    console.log(moment().format('YYYY-MM-DD HH:mm:ss') + ": Database clear!");
+    response.writeHead(200, {"Content-Type": "text/html"});
     response.write("Database clear!");
+    response.write("<br><p><a href='/get-all'>get-all</a></p>");
     response.end(); 
  
 }
 
+
 function getTserver(request,response) {
 
+    //Сортируем по времени следующего звонка
+    tserverArray.sort(function(a,b){
+        return a.nexttimecall - b.nexttimecall
+    });
+
     response.writeHead(200, {"Content-Type": "text/plain"});
-    for(t in tserver) {
-        response.write("Ha" + tserver[t].ip + "\n");
-    }
+
+    var C = Math.floor((Math.random() * Cmax) + Cmin); //Вычисляем random Count
+
+    for(t in tserverArray) {
+        if (tserverArray[t].status == 0 
+            && tserverArray[t].count < C 
+            && tserverArray[t].nexttimecall < moment().unix()) {
+            tserverArray[t].status = 1;        // Занимаем линию
+            response.write(tserverArray[t].ip); // Выдаем IP
+            break;
+        }
+    }    
+
     response.end();
 }
 
 function setCall(request,response) {
 
-    response.writeHead(200, {"Content-Type": "text/plain"});
-    for(t in tserver) {
-        response.write("Ha" + tserver[t].ip + "\n");
+    if (request.method == 'POST') {
+        var query = url.parse(request.url,true).query;
+        tserver[query.ip].status = 0;
+        if (query.cause == "NORMAL_CLEARING") {
+            tserver[query.ip].count += 1;
+            //Вычисляем время следующего звонка
+            tserver[query.ip].nexttimecall = moment().unix() + Math.floor((Math.random() * Amax) + Amin);
+        } else {
+            tserver[query.ip].nexttimecall = moment().unix() + Math.floor((Math.random() * Bmax) + Bmin);
+        }
     }
+
+    response.writeHead(200, {"Content-Type": "text/plain"});
     response.end();
 }
 
+// Вывод основного массива
 function getAll(request,response) {
 
     response.writeHead(200, {"Content-Type": "text/html"});
     response.write("<table border='1'><tr><td>ip</td><td>nexttimecall</td><td>count</td><td>status</td></tr>");
     for(t in tserver) {
         response.write("<tr><td>"+ tserver[t].ip +"</td> \
-                            <td>"+ tserver[t].nexttimecall +"</td> \
+                            <td>"+ moment(tserver[t].nexttimecall,'X').format('YYYY-MM-DD HH:mm:ss') +"</td> \
                             <td>"+ tserver[t].count +"</td> \
                             <td>"+ tserver[t].status +"</td></tr>");
     }
     response.write("</table>");
+    response.write("<br><p><a href='/clear-all'>clear-all</a></p>");
     response.end();
 }
-
-/*
-function setSuccessTime(request, response) {
-	keeper.lastSuccess = new Date;
-    response.writeHead(200, {"Content-Type": "text/plain"});
-    response.write("" + keeper.lastSuccess);
-    response.end();	
-}
-
-function setFailTime(request, response) {
-	keeper.lastFail = new Date;
-    response.writeHead(200, {"Content-Type": "text/plain"});
-    response.write("" + keeper.lastFail);
-    response.end();	
-}
-
-function getSuccessTime(request, response) {
-    response.writeHead(200, {"Content-Type": "text/plain"});
-    response.write("" + keeper.lastSuccess);
-    response.end();	
-
-}
-
-function getFailTime(request, response) {
-    response.writeHead(200, {"Content-Type": "text/plain"});
-    response.write("" + keeper.lastFail);
-    response.end();	
-
-}
-*/
