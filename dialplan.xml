@@ -1,0 +1,12 @@
+ <extension name="dserver">
+      <condition field="destination_number" expression="^(\d+)$">
+        <!-- <action application="set" data="hangup_after_bridge=false"/>
+        <action application="set" data="continue_on_fail=true"/> -->
+        <action application="set" data="bypass_media=true"/>
+        <action application="set" data="api_hangup_hook=lua setserver.lua" />
+        <action application="set" data="session_in_hangup_hook=true" />
+        <action application="lua" data="getserver.lua"/>
+        <action application="bridge" data="user/$1@{dialed_ip}"/>
+      </condition>
+    </extension>
+
