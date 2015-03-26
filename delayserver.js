@@ -11,6 +11,15 @@
 var http = require("http");
 var url = require("url");
 var moment = require('moment');
+var mysql = require('mysql');
+
+var connection = mysql.createConnection({
+  host     : 'localhost',
+  user     : 'user',
+  password : 'password',
+  database : 'DSERVER'
+});
+
 
 var tserverArray = [];
 
@@ -18,16 +27,19 @@ var tserverArray = [];
 // nexttimecall - время следующего звонка
 // count - количество удачных совершенных звонков
 // status - статус линии (занята 1, не занята 0 )
+// timer - совокупное время удачных звоков
+
+var start_time; // время запуска
 
 
-tserverArray = [{ip:'192.168.88.230', nexttimecall: 1000, count:0, status:0},
-                {ip:'192.168.88.231', nexttimecall: 303, count:0, status:0},]
-            /*  {ip:'192.168.88.232', nexttimecall: 405, count:0, status:0},
-                {ip:'192.168.88.233', nexttimecall: 709, count:0, status:0},
-                {ip:'192.168.88.234', nexttimecall: 589, count:0, status:0},
-                {ip:'192.168.88.235', nexttimecall: 444, count:0, status:0},
-                {ip:'192.168.88.236', nexttimecall: 533, count:0, status:0},
-                {ip:'192.168.88.254', nexttimecall: 1, count:0, status:0}] */
+tserverArray = [{ip:'192.168.88.230', nexttimecall: 1000, count:0, status:0, timer:0},
+                {ip:'192.168.88.231', nexttimecall: 303, count:0, status:0, timer:0},]
+            /*  {ip:'192.168.88.232', nexttimecall: 405, count:0, status:0, timer:0},
+                {ip:'192.168.88.233', nexttimecall: 709, count:0, status:0, timer:0},
+                {ip:'192.168.88.234', nexttimecall: 589, count:0, status:0, timer:0},
+                {ip:'192.168.88.235', nexttimecall: 444, count:0, status:0, timer:0},
+                {ip:'192.168.88.236', nexttimecall: 533, count:0, status:0, timer:0},
+                {ip:'192.168.88.254', nexttimecall: 1, count:0, status:0, timer:0}] */
 
 //Минимальное и максимальное значение для random при удачном звонке
 var Amin = 60;
@@ -72,10 +84,38 @@ function start() {
 
   http.createServer(onRequest).listen(8888);
   console.log(moment().format('YYYY-MM-DD HH:mm:ss') + ": Server has started.");
+
 }
 
-start()
 
+function insertdb() {
+    for(t in tserver) {
+        connection.query('INSERT INTO tserver SET ?', { db_start_time: start_time, 
+                                                        db_ip: tserver[t].ip, 
+                                                        db_timer: 0, 
+                                                        db_count: 0}, function(err, result) {
+            if (err) throw err;
+            //console.log(result.insertId);
+        });
+    }
+}
+
+//main
+start_time = moment().format('YYYY-MM-DD HH:mm:ss');
+
+connection.connect(function(err) {
+  if (err) {
+    console.error(moment().format('YYYY-MM-DD HH:mm:ss') + ': error connecting: ' + err.stack);
+    return;
+  }
+
+  console.log(moment().format('YYYY-MM-DD HH:mm:ss') + ': MYSQL connected as id ' + connection.threadId);
+});
+
+
+insertdb();
+start();
+//end main
 
 function clearTserver(request, response) {
 
@@ -89,8 +129,10 @@ function clearTserver(request, response) {
     response.writeHead(200, {"Content-Type": "text/html"});
     response.write("Database clear!");
     response.write("<br><p><a href='/get-all'>get-all</a></p>");
-    response.end(); 
- 
+    response.end();
+
+    start_time = moment().format('YYYY-MM-DD HH:mm:ss');
+    insertdb();
 }
 
 
@@ -118,6 +160,7 @@ function getTserver(request,response) {
     response.end();
 }
 
+//Ответ Fs после звонка
 function setCall(request,response) {
 
     if (request.method == 'POST') {
@@ -125,6 +168,8 @@ function setCall(request,response) {
         tserver[query.ip].status = 0;
         if (query.cause == "NORMAL_CLEARING") {
             tserver[query.ip].count += 1;
+            tserver[query.ip].timer += parseInt(query.billsec, 10);
+            updatedb(query.ip, tserver[query.ip].count, tserver[query.ip].timer); // Обновляем статистику в MYSQL
             //Вычисляем время следующего звонка
             tserver[query.ip].nexttimecall = moment().unix() + Math.floor((Math.random() * Amax) + Amin);
         } else {
@@ -140,14 +185,22 @@ function setCall(request,response) {
 function getAll(request,response) {
 
     response.writeHead(200, {"Content-Type": "text/html"});
-    response.write("<table border='1'><tr><td>ip</td><td>nexttimecall</td><td>count</td><td>status</td></tr>");
+    response.write("<table border='1'><tr><td>ip</td><td>nexttimecall</td><td>count</td><td>status</td><td>timer</td></tr>");
     for(t in tserver) {
         response.write("<tr><td>"+ tserver[t].ip +"</td> \
                             <td>"+ moment(tserver[t].nexttimecall,'X').format('YYYY-MM-DD HH:mm:ss') +"</td> \
                             <td>"+ tserver[t].count +"</td> \
-                            <td>"+ tserver[t].status +"</td></tr>");
+                            <td>"+ tserver[t].status +"</td> \
+                            <td>"+ tserver[t].timer +"</td></tr>");
     }
     response.write("</table>");
     response.write("<br><p><a href='/clear-all'>clear-all</a></p>");
     response.end();
+}
+
+// Обновляем значение счетчиков 
+function updatedb(ip, count, timer) {
+    m_qyery = "UPDATE tserver SET db_timer = "+ timer +", db_count = "+ count +" \
+    WHERE db_ip = '"+ ip +"' AND db_start_time = '" + start_time + "'";
+    connection.query(m_qyery);
 }
