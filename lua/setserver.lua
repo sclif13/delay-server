@@ -10,20 +10,23 @@ node_server = "http://127.0.0.1:8888" -- адрес node.js сервера
 
 local reqbody =""
 
-local ipt = session:getVariable("dialed_ip")
-local cause = session:getVariable("hangup_cause")
+local ipt = session:getVariable("dialed_ip") -- ip tserver
+local cause = session:getVariable("hangup_cause") -- причина завершения звонка
+local billsec = session:getVariable("billsec") -- длительность звонка
 
-
---dat = env:serialize()            
---freeswitch.consoleLog("INFO","Here's everything:\n" .. dat .. "\n")
+dat = env:serialize()            
+freeswitch.consoleLog("INFO","Here's everything:\n" .. dat .. "\n")
+--${duration}","${billsec}"
 
 session:consoleLog("info",string.format("Tserver=%s",ipt));
 session:consoleLog("info",string.format("Cause=%s",cause));
+session:consoleLog("info",string.format("Billsec=%s",billsec));
 
 if ipt then
     if not cause then cause="FAIL" end
+    if not cause then billsec=0 end
 
-    reqbody = "ip=" .. ipt .."&cause=" .. cause
+    reqbody = "ip=" .. ipt .."&cause=" .. cause .."&billsec=" .. billsec
     b, c, h = http.request {
           method = "POST",
           url = node_server .. "/set-call?" .. reqbody,
