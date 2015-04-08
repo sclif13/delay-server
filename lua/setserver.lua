@@ -18,9 +18,9 @@ dat = env:serialize()
 freeswitch.consoleLog("INFO","Here's everything:\n" .. dat .. "\n")
 --${duration}","${billsec}"
 
-session:consoleLog("info",string.format("Tserver=%s",ipt));
-session:consoleLog("info",string.format("Cause=%s",cause));
-session:consoleLog("info",string.format("Billsec=%s",billsec));
+if ipt then session:consoleLog("info",string.format("Tserver=%s",ipt)); end
+if cause then session:consoleLog("info",string.format("Cause=%s",cause)); end
+if billsec then session:consoleLog("info",string.format("Billsec=%s",billsec)); end
 
 if ipt then
     if not cause then cause="FAIL" end
