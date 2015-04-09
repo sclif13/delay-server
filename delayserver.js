@@ -145,7 +145,7 @@ function getTserver(request,response) {
 
     response.writeHead(200, {"Content-Type": "text/plain"});
 
-    var C = Math.floor((Math.random() * Cmax) + Cmin); //Вычисляем random Count
+    var C = Math.floor((Math.random() * (Cmax - Cmin)) + Cmin); //Вычисляем random Count
 
     for(t in tserverArray) {
         if (tserverArray[t].status == 0 
@@ -171,9 +171,9 @@ function setCall(request,response) {
             tserver[query.ip].timer += parseInt(query.billsec, 10);
             updatedb(query.ip, tserver[query.ip].count, tserver[query.ip].timer); // Обновляем статистику в MYSQL
             //Вычисляем время следующего звонка
-            tserver[query.ip].nexttimecall = moment().unix() + Math.floor((Math.random() * Amax) + Amin);
+            tserver[query.ip].nexttimecall = moment().unix() + Math.floor((Math.random() * (Amax - Amin)) + Amin);
         } else {
-            tserver[query.ip].nexttimecall = moment().unix() + Math.floor((Math.random() * Bmax) + Bmin);
+            tserver[query.ip].nexttimecall = moment().unix() + Math.floor((Math.random() * (Bmax - Bmin)) + Bmin);
         }
     }
 
