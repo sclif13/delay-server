@@ -32,9 +32,9 @@ var tserverArray = [];
 var start_time; // время запуска
 
 
-tserverArray = [{ip:'192.168.88.230', nexttimecall: 1000, count:0, status:0, timer:0},
-                {ip:'192.168.88.231', nexttimecall: 303, count:0, status:0, timer:0},]
-            /*  {ip:'192.168.88.232', nexttimecall: 405, count:0, status:0, timer:0},
+tserverArray = [{ip:'192.168.88.230', nexttimecall: 1000, count:0, status:0, timer:0},]
+            /*  {ip:'192.168.88.231', nexttimecall: 303, count:0, status:0, timer:0},
+                {ip:'192.168.88.232', nexttimecall: 405, count:0, status:0, timer:0},
                 {ip:'192.168.88.233', nexttimecall: 709, count:0, status:0, timer:0},
                 {ip:'192.168.88.234', nexttimecall: 589, count:0, status:0, timer:0},
                 {ip:'192.168.88.235', nexttimecall: 444, count:0, status:0, timer:0},
@@ -123,6 +123,7 @@ function clearTserver(request, response) {
         tserver[t].nexttimecall = 0;
         tserver[t].count = 0;
         tserver[t].status = 0;
+        tserver[t].timer = 0;
     }
 
     console.log(moment().format('YYYY-MM-DD HH:mm:ss') + ": Database clear!");
@@ -166,9 +167,9 @@ function setCall(request,response) {
     if (request.method == 'POST') {
         var query = url.parse(request.url,true).query;
         tserver[query.ip].status = 0;
-        if (query.cause == "NORMAL_CLEARING") {
-            tserver[query.ip].count += 1;
-            tserver[query.ip].timer += parseInt(query.billsec, 10);
+        if (query.cause == "NORMAL_CLEARING" && query.billsec > 0) {
+        	tserver[query.ip].count += 1;
+        	tserver[query.ip].timer += parseInt(query.billsec, 10);
             updatedb(query.ip, tserver[query.ip].count, tserver[query.ip].timer); // Обновляем статистику в MYSQL
             //Вычисляем время следующего звонка
             tserver[query.ip].nexttimecall = moment().unix() + Math.floor((Math.random() * (Amax - Amin)) + Amin);
