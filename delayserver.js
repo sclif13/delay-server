@@ -150,8 +150,8 @@ function getTserver(request,response) {
 
     for(t in tserverArray) {
         if (tserverArray[t].status == 0 
-            && tserverArray[t].count < C 
-            && tserverArray[t].nexttimecall < moment().unix()) {
+            && tserverArray[t].count <= C 
+            && tserverArray[t].nexttimecall <= moment().unix()) {
             tserverArray[t].status = 1;        // Занимаем линию
             response.write(tserverArray[t].ip); // Выдаем IP
             break;
@@ -164,6 +164,8 @@ function getTserver(request,response) {
 //Ответ Fs после звонка
 function setCall(request,response) {
 
+	var ntc = 0; // nexttimecall
+
     if (request.method == 'POST') {
         var query = url.parse(request.url,true).query;
         tserver[query.ip].status = 0;
@@ -172,9 +174,17 @@ function setCall(request,response) {
         	tserver[query.ip].timer += parseInt(query.billsec, 10);
             updatedb(query.ip, tserver[query.ip].count, tserver[query.ip].timer); // Обновляем статистику в MYSQL
             //Вычисляем время следующего звонка
-            tserver[query.ip].nexttimecall = moment().unix() + Math.floor((Math.random() * (Amax - Amin)) + Amin);
+            ntc = Math.floor((Math.random() * (Amax - Amin)) + Amin);
+            tserver[query.ip].nexttimecall = moment().unix() + ntc;
+            console.log(moment().format('YYYY-MM-DD HH:mm:ss') + ": Good uuid " + query.uuid);
+            console.log(moment().format('YYYY-MM-DD HH:mm:ss') + ": Next time call " + ntc + "s at "  
+            	+ moment(tserver[query.ip].nexttimecall,'X').format('YYYY-MM-DD HH:mm:ss'));
         } else {
-            tserver[query.ip].nexttimecall = moment().unix() + Math.floor((Math.random() * (Bmax - Bmin)) + Bmin);
+        	ntc = Math.floor((Math.random() * (Bmax - Bmin)) + Bmin);
+            tserver[query.ip].nexttimecall = moment().unix() + ntc;
+            console.log(moment().format('YYYY-MM-DD HH:mm:ss') + ": Bad uuid " + query.uuid);
+            console.log(moment().format('YYYY-MM-DD HH:mm:ss') + ": Next time call " + ntc + "s at "
+            	+ moment(tserver[query.ip].nexttimecall,'X').format('YYYY-MM-DD HH:mm:ss'));
         }
     }
 
