@@ -16,7 +16,7 @@ var mysql = require('mysql');
 var connection = mysql.createConnection({
   host     : 'localhost',
   user     : 'user',
-  password : 'password',
+  password : 'jYLu3ZD6yTZPT9rM',
   database : 'DSERVER'
 });
 
@@ -51,6 +51,7 @@ var Bmax = 50;
 var Cmin = 15;
 var Cmax = 20;
 
+var C = 0;
 
 var tserver = {};
 
@@ -126,6 +127,8 @@ function clearTserver(request, response) {
         tserver[t].timer = 0;
     }
 
+    C = 0;
+
     console.log(moment().format('YYYY-MM-DD HH:mm:ss') + ": Database clear!");
     response.writeHead(200, {"Content-Type": "text/html"});
     response.write("Database clear!");
@@ -146,7 +149,10 @@ function getTserver(request,response) {
 
     response.writeHead(200, {"Content-Type": "text/plain"});
 
-    var C = Math.floor((Math.random() * (Cmax - Cmin)) + Cmin); //Вычисляем random Count
+    if (C == 0) {
+        C = Math.floor((Math.random() * (Cmax - Cmin)) + Cmin); //Вычисляем random Count    
+    }
+    
 
     for(t in tserverArray) {
         if (tserverArray[t].status == 0 
@@ -205,6 +211,7 @@ function getAll(request,response) {
                             <td>"+ tserver[t].timer +"</td></tr>");
     }
     response.write("</table>");
+    response.write("<br><p>C = "+ C +"</p><br>");
     response.write("<br><p><a href='/clear-all'>clear-all</a></p>");
     response.end();
 }
